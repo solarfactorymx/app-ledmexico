@@ -7,19 +7,16 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime
 
 # ==========================================
-# FIJAMOS LA RUTA ABSOLUTA DEL SERVIDOR (Evita la pantalla de Login)
+# CREACIÓN DE CARPETAS SEGURAS
 # ==========================================
-DIRECTORIO_RAIZ = os.getcwd()
-CARPETA_UPLOADS = os.path.join(DIRECTORIO_RAIZ, "uploads")
-CARPETA_ASSETS = os.path.join(DIRECTORIO_RAIZ, "assets")
-os.makedirs(CARPETA_UPLOADS, exist_ok=True)
-os.makedirs(CARPETA_ASSETS, exist_ok=True)
+os.makedirs("uploads", exist_ok=True)
+os.makedirs("assets", exist_ok=True)
 
 # Importamos las librerías del PDF y gráficas
 try:
     import numpy as np
     import matplotlib
-    matplotlib.use('Agg') 
+    matplotlib.use('Agg') # Fundamental para que no choque en servidores
     import matplotlib.pyplot as plt
     from fpdf import FPDF
 except ImportError:
@@ -70,7 +67,7 @@ def main(page: ft.Page):
                             fecha_exp = datetime.strptime(db_fecha, "%Y-%m-%d")
                             if hoy <= fecha_exp: return True, "OK"
                             else: return False, f"⚠️ Acceso expirado el {db_fecha}"
-                        except ValueError: return False, f"❌ Error de fecha en Drive (Usa AAAA-MM-DD)."
+                        except ValueError: return False, f"❌ Error de fecha en Drive."
             return False, "❌ Usuario o contraseña incorrectos"
         except Exception as ex: return False, f"Error de conexión: {ex}"
 
@@ -91,14 +88,13 @@ def main(page: ft.Page):
         else: txt_error_login.value = mensaje; txt_error_login.color = "red"; prg_login.visible = False; btn_login.disabled = False
         page.update()
 
-    # Agregamos "on_submit=intentar_entrar" para que la tecla Enter funcione
     in_usuario = ft.TextField(label="Usuario LED México", width=300, text_align="center", on_submit=intentar_entrar)
     in_password = ft.TextField(label="Contraseña", password=True, can_reveal_password=True, width=300, text_align="center", on_submit=intentar_entrar)
     btn_login = ft.ElevatedButton("AUTENTICAR ACCESO", on_click=intentar_entrar, width=300, height=50, bgcolor="orange", color="white")
     
     pantalla_login = ft.Container(
         content=ft.Column([
-            ft.Image(src="/logo.png", width=250, height=120, fit=ft.ImageFit.CONTAIN), # <--- LOGO AQUI
+            ft.Image(src="/logo.png", width=250, height=120, fit=ft.ImageFit.CONTAIN), 
             ft.Text("SISTEMA DE SEGURIDAD CLOUD", size=22, weight="bold", color="white"), 
             ft.Container(height=10), in_usuario, in_password, prg_login, btn_login, txt_error_login
         ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
@@ -113,15 +109,14 @@ def main(page: ft.Page):
 
     def on_archivo_subido(e: ft.FilePickerUploadEvent):
         if e.progress < 1: return 
-        ruta_archivo = os.path.join(CARPETA_UPLOADS, e.file_name)
+        ruta_archivo = os.path.join("uploads", e.file_name)
         try:
             tipo_mime = 'application/pdf' if e.file_name.lower().endswith('.pdf') else 'image/jpeg'
             with open(ruta_archivo, 'rb') as f:
                 archivos_para_enviar = {'file': (e.file_name, f, tipo_mime)}
                 respuesta = requests.post(f"{URL_SERVIDOR}/api/ocr", files=archivos_para_enviar)
-                
                 try: datos = respuesta.json()
-                except Exception: datos = {"error": f"El servidor respondió con código {respuesta.status_code}."}
+                except Exception: datos = {"error": f"Error {respuesta.status_code}."}
 
             if datos.get("exito"):
                 txt_estado_ocr.value = "✅ ¡Recibo procesado con éxito!"; txt_estado_ocr.color = "green"
@@ -144,16 +139,16 @@ def main(page: ft.Page):
                 page.update(); calcular_propuesta()
             else: 
                 error_msg = datos.get('detail', datos.get('error', str(datos)))
-                txt_estado_ocr.value = f"❌ Error Real de la Nube: {error_msg}"; txt_estado_ocr.color = "red"
+                txt_estado_ocr.value = f"❌ Error de Nube: {error_msg}"; txt_estado_ocr.color = "red"
         except Exception as ex: 
-            txt_estado_ocr.value = f"❌ Error de conexión al motor: {ex}"; txt_estado_ocr.color = "red"
+            txt_estado_ocr.value = f"❌ Error motor: {ex}"; txt_estado_ocr.color = "red"
         finally: 
             prg_ocr.visible = False; btn_ocr.disabled = False; page.update()
 
     def procesar_archivo_seleccionado(e: ft.FilePickerResultEvent):
         if getattr(e, "files", None) is None or not e.files: return
         archivo = e.files[0]
-        txt_estado_ocr.value = f"⏳ Enviando a la nube Render..."; txt_estado_ocr.color = "orange"
+        txt_estado_ocr.value = f"⏳ Enviando a Render..."; txt_estado_ocr.color = "orange"
         prg_ocr.visible = True; btn_ocr.disabled = True; page.update()
         upload_url = page.get_upload_url(archivo.name, 60)
         file_picker.upload([ft.FilePickerUploadFile(archivo.name, upload_url=upload_url)])
@@ -169,7 +164,6 @@ def main(page: ft.Page):
     in_potencia = ft.TextField(label="Watts del Panel", value="600", keyboard_type="number", width=160, height=45)
     entradas_historial = [ft.TextField(label=f"Bimestre {i+1}", value="0", height=45, text_size=13, visible=(i < 6)) for i in range(12)]
     
-    # Controles para mostrar las gráficas en la web
     img_g1 = ft.Image(src="", width=420, height=250, fit=ft.ImageFit.CONTAIN, visible=False)
     img_g2 = ft.Image(src="", width=420, height=250, fit=ft.ImageFit.CONTAIN, visible=False)
     fila_graficas_web = ft.Row([img_g1, img_g2], alignment=ft.MainAxisAlignment.CENTER, scroll="auto")
@@ -213,7 +207,6 @@ def main(page: ft.Page):
         elif t == "GDMTH": columna_costos.controls.extend(campos_costos["GDMTH"]); switch_mensual.value = True
         columna_costos.controls.append(campos_costos["SUB"]); alternar_periodos()
         
-        # Ocultamos botones y gráficas al cambiar de tarifa
         btn_pdf.visible = False; btn_abrir_pdf.visible = False
         img_g1.visible = False; img_g2.visible = False
         page.update()
@@ -221,6 +214,10 @@ def main(page: ft.Page):
     def btn_t(txt): return ft.ElevatedButton(txt, on_click=lambda _: actualizar_interfaz(txt), bgcolor="#2874A6", color="white")
     grid_tarifas = ft.Column([ft.Row([btn_t("01"), btn_t("1A"), btn_t("1B"), btn_t("1C"), btn_t("1D")], scroll="auto"), ft.Row([btn_t("1E"), btn_t("1F"), btn_t("DAC"), btn_t("PDBT"), btn_t("GDMTO"), btn_t("GDMTH")], scroll="auto")])
     res_final = ft.Container(content=ft.Text("Ingresa datos", color="white"), padding=15, bgcolor="#1B2631", border_radius=10)
+
+    def num_seguro(valor):
+        try: return float(str(valor).replace("$", "").replace(",", "").strip())
+        except: return 0.0
 
     def calcular_propuesta(e=None):
         res_final.content.value = "Calculando inteligencia financiera..."
@@ -248,7 +245,6 @@ def main(page: ft.Page):
 
             if d.get("exito"):
                 ahorro_periodo = num_seguro(d.get('ahorro_periodo', 0)); nuevo_pago = num_seguro(d.get('nuevo_pago', 0)); gen_kwh = num_seguro(d.get('generacion_periodo_kwh', 0))
-                
                 subtotal_usuario = next((num_seguro(c.value) for c in columna_costos.controls if "Subtotal" in c.label), 0)
                 gasto_actual_estimado = subtotal_usuario if subtotal_usuario > 0 else (ahorro_periodo + nuevo_pago)
                 costo_por_kwh = gasto_actual_estimado / promedio_kwh if promedio_kwh > 0 else 0
@@ -281,7 +277,6 @@ def main(page: ft.Page):
                     "c_list": c_list, "p_list": p_list, "a_list": a_list, "np_list": np_list, "b_list": b_list
                 })
                 
-                # --- AQUÍ GENERAMOS LAS GRÁFICAS PARA LA PÁGINA WEB ---
                 try:
                     import matplotlib.pyplot as plt
                     import numpy as np
@@ -289,16 +284,15 @@ def main(page: ft.Page):
                     x = np.arange(n_periodos)
                     etiquetas = [f"P{i+1}" for i in range(n_periodos)]
 
-                    # Gráfica 1
                     fig1, ax1 = plt.subplots(figsize=(6, 3.5))
                     ax1.bar(x - 0.175, consumos, 0.35, label='Consumo', color='#E74C3C')
                     ax1.bar(x + 0.175, [gen_kwh]*n_periodos, 0.35, label='Generación', color='#2ECC71')
                     ax1.set_title('Historial de Energía (kWh)', fontsize=12, fontweight='bold')
                     ax1.set_xticks(x); ax1.set_xticklabels(etiquetas)
                     ax1.legend(); fig1.tight_layout()
-                    ruta_g1 = os.path.join(CARPETA_ASSETS, "g1.png"); fig1.savefig(ruta_g1); plt.close(fig1)
+                    ruta_g1 = os.path.join("assets", "g1.png")
+                    fig1.savefig(ruta_g1, format='png'); plt.close(fig1)
 
-                    # Gráfica 2
                     fig2, ax2 = plt.subplots(figsize=(6, 3.5))
                     ax2.bar(x - 0.25, p_list, 0.25, label='Pago Actual', color='#E74C3C')
                     ax2.bar(x, a_list, 0.25, label='Ahorro', color='#2ECC71')
@@ -306,16 +300,16 @@ def main(page: ft.Page):
                     ax2.set_title('Historial Económico ($)', fontsize=12, fontweight='bold')
                     ax2.set_xticks(x); ax2.set_xticklabels(etiquetas)
                     ax2.legend(); fig2.tight_layout()
-                    ruta_g2 = os.path.join(CARPETA_ASSETS, "g2.png"); fig2.savefig(ruta_g2); plt.close(fig2)
+                    ruta_g2 = os.path.join("assets", "g2.png")
+                    fig2.savefig(ruta_g2, format='png'); plt.close(fig2)
 
-                    # Actualizamos la pantalla con las gráficas recién hechas (El reloj evita el caché del navegador)
                     timestamp = int(datetime.now().timestamp())
                     img_g1.src = f"/g1.png?t={timestamp}"
                     img_g2.src = f"/g2.png?t={timestamp}"
                     img_g1.visible = True
                     img_g2.visible = True
                 except Exception as ex_graf:
-                    print("Advertencia: No se pudieron mostrar las gráficas en pantalla:", ex_graf)
+                    print("Advertencia Gráficas Web:", ex_graf)
 
                 res_final.content.value = f"✅ INGENIERÍA COMPLETA:\nPaneles: {cant_final} | Potencia: {round(potencia_inst,2)}kWp | Ahorro Anual: ${round(ahorro_anual, 2):,}"
                 res_final.bgcolor = "#145A32"; btn_pdf.visible = True
@@ -324,7 +318,7 @@ def main(page: ft.Page):
         page.update()
 
     # ==========================================
-    # CREADOR PROFESIONAL DE PDF
+    # CREADOR PROFESIONAL DE PDF BLINDADO
     # ==========================================
     def generar_y_compartir_pdf(e):
         btn_pdf.disabled = True
@@ -333,8 +327,7 @@ def main(page: ft.Page):
         try: 
             from fpdf import FPDF
         except ImportError: 
-            res_final.content.value = "⚠️ Instala librerías: pip install fpdf matplotlib numpy"
-            res_final.bgcolor = "#7B241C"; btn_pdf.disabled = False; page.update(); return
+            res_final.content.value = "⚠️ Faltan librerías."; res_final.bgcolor = "#7B241C"; btn_pdf.disabled = False; page.update(); return
             
         try:
             consumos = datos_pdf_global.get('c_list', [])
@@ -345,14 +338,27 @@ def main(page: ft.Page):
             balances = datos_pdf_global.get('b_list', [])
             n_periodos = len(consumos)
 
-            # --- CONSTRUCCIÓN DEL PDF ---
             pdf = FPDF()
             pdf.add_page()
             
+            # --- 1. ESCUDO Y AGREGADO DEL LOGO EN EL PDF ---
+            ruta_logo = os.path.join("assets", "logo.png")
+            try:
+                if os.path.exists(ruta_logo):
+                    pdf.image(ruta_logo, x=10, y=8, w=35, type='PNG')
+            except Exception:
+                pass # Si el logo no existe o falla, el documento sigue vivo
+
+            # Acomodamos el texto a la derecha del Logo
+            pdf.set_xy(50, 10)
             pdf.set_font("Arial", 'B', 18); pdf.set_text_color(243, 156, 18)
             pdf.cell(0, 6, "LED MEXICO", ln=True, align="L")
+            pdf.set_xy(50, 16)
             pdf.set_font("Arial", 'I', 10); pdf.set_text_color(100, 100, 100)
             pdf.cell(0, 5, "DISENO Y FABRICACION", ln=True, align="L")
+            
+            # Continuamos con el documento normal
+            pdf.set_xy(10, 35) 
             pdf.set_font("Arial", 'B', 14); pdf.set_text_color(0, 0, 0)
             pdf.cell(0, 8, "Propuesta de Sistema Fotovoltaico", ln=True, align="L")
             pdf.set_font("Arial", '', 10)
@@ -416,32 +422,35 @@ def main(page: ft.Page):
             texto_p = (f"Considerando su consumo y para cubrir los gastos reflejados en el recibo de CFE, se determina la necesidad de instalar {datos_pdf_global.get('paneles', '')} paneles solares de {datos_pdf_global.get('watts', '')} Watts de potencia. Este sistema solar fotovoltaico tendra la capacidad de generar aproximadamente {datos_pdf_global.get('gen_kwh',0):,.0f} kWh por periodo. En consecuencia, se propone la instalacion de un inversor con una capacidad de al menos {datos_pdf_global.get('inversor_sug',0):.2f} kW para gestionar eficientemente la energia producida.\n\nEl precio de los costos es aproximado y puede diferir del recibo.")
             pdf.multi_cell(0, 5, texto_p)
 
-            # Insertamos las gráficas que se generaron en el paso anterior
+            # --- 2. ESCUDO DE GRÁFICAS (Y type='PNG' forzado) ---
             pdf.add_page()
             pdf.set_font("Arial", 'B', 14)
             pdf.cell(0, 10, "Analisis Grafico", ln=True, align="C")
             pdf.ln(5)
             
-            ruta_g1 = os.path.join(CARPETA_ASSETS, "g1.png")
-            ruta_g2 = os.path.join(CARPETA_ASSETS, "g2.png")
-            if os.path.exists(ruta_g1): pdf.image(ruta_g1, x=25, y=None, w=160)
+            ruta_g1 = os.path.join("assets", "g1.png")
+            ruta_g2 = os.path.join("assets", "g2.png")
+            
+            try:
+                if os.path.exists(ruta_g1): pdf.image(ruta_g1, x=25, y=None, w=160, type='PNG')
+            except Exception: pass
+            
             pdf.ln(10)
-            if os.path.exists(ruta_g2): pdf.image(ruta_g2, x=25, y=None, w=160)
+            
+            try:
+                if os.path.exists(ruta_g2): pdf.image(ruta_g2, x=25, y=None, w=160, type='PNG')
+            except Exception: pass
 
-            # ==========================================
-            # DESCARGA DEL PDF (PESTAÑA NUEVA)
-            # ==========================================
+            # Descarga Segura
             timestamp = int(datetime.now().timestamp())
             nombre_archivo = f"Propuesta_LED_MEXICO_{timestamp}.pdf"
-            ruta_pdf = os.path.join(CARPETA_ASSETS, nombre_archivo)
+            ruta_pdf = os.path.join("assets", nombre_archivo)
             
-            # Guardamos el archivo físicamente
             pdf.output(ruta_pdf)
             
-            # Mostramos el botón directo de descarga
             btn_pdf.visible = False
             btn_abrir_pdf.url = f"/{nombre_archivo}"
-            btn_abrir_pdf.url_target = "_blank"  # Evita que se recargue el login
+            btn_abrir_pdf.url_target = "_blank" 
             btn_abrir_pdf.visible = True
             
             res_final.content.value = "✅ ¡PDF Generado! Haz clic en el botón verde de abajo para abrirlo."
@@ -453,14 +462,13 @@ def main(page: ft.Page):
         btn_pdf.disabled = False
         page.update()
 
-    # Los dos botones (El gris que genera y el verde que descarga/abre)
     btn_calcular = ft.ElevatedButton("CALCULAR SISTEMA", on_click=calcular_propuesta, width=350, height=60, bgcolor="orange", color="white")
     btn_pdf = ft.ElevatedButton("📄 GENERAR PDF CON GRÁFICAS", bgcolor="#34495E", color="white", width=350, height=50, visible=False, on_click=generar_y_compartir_pdf)
     btn_abrir_pdf = ft.ElevatedButton("✅ ABRIR / DESCARGAR PDF", bgcolor="#2ECC71", color="white", width=350, height=60, visible=False)
 
     pantalla_principal = ft.Column([
         ft.Row([
-            ft.Image(src="/logo.png", width=120, height=60, fit=ft.ImageFit.CONTAIN), # <--- LOGO AQUI
+            ft.Image(src="/logo.png", width=120, height=60, fit=ft.ImageFit.CONTAIN), 
             ft.Text("LED MÉXICO - Dashboard Financiero + OCR", size=26, weight="bold", color="orange")
         ], alignment=ft.MainAxisAlignment.CENTER),
         contenedor_ocr, 
@@ -468,7 +476,7 @@ def main(page: ft.Page):
         grid_tarifas, ft.Row([ft.Text("Tarifa Activa:"), tarifa_activa]), ft.Divider(),
         ft.Row([in_potencia, switch_mensual]), 
         fila_tablas, 
-        fila_graficas_web, # <--- LAS GRÁFICAS AHORA APARECEN AQUÍ
+        fila_graficas_web,
         ft.Column([btn_calcular, btn_pdf, btn_abrir_pdf], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER),
         res_final
     ], visible=False)
@@ -479,5 +487,4 @@ def main(page: ft.Page):
 os.environ["FLET_SECRET_KEY"] = "LED_MEXICO_SEGURIDAD_123"
 puerto = int(os.environ.get("PORT", 8080))
 
-# Ejecución final
-ft.app(target=main, view=ft.AppView.WEB_BROWSER, upload_dir=CARPETA_UPLOADS, assets_dir=CARPETA_ASSETS, host="0.0.0.0", port=puerto)
+ft.app(target=main, view=ft.AppView.WEB_BROWSER, upload_dir="uploads", assets_dir="assets", host="0.0.0.0", port=puerto)
