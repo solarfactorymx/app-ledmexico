@@ -101,7 +101,7 @@ def main(page: ft.Page):
     pantalla_login = ft.Container(
         content=ft.Column([
             ft.Image(src="/logo.png", width=250, height=120, fit=ft.ImageFit.CONTAIN), 
-            ft.Text("SISTEMA DE INICIO DE SESION PARA SISTEMAS FOTOVOLTAAICOS LED MEXICO", size=22, weight="bold", color="white"), 
+            ft.Text("SISTEMA DE INICIO DE SESION PARA SISTEMAS FOTOVOLTAICOS LED MEXICO", size=22, weight="bold", color="white"), 
             ft.Container(height=10), in_usuario, in_password, prg_login, btn_login, txt_error_login
         ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
         alignment=ft.alignment.center, expand=True, margin=ft.margin.only(top=100)
