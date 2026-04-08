@@ -26,7 +26,7 @@ except ImportError:
     pass
 
 def main(page: ft.Page):
-    page.title = "LED MÉXICO - Gestión de Accesos Cloud"
+    page.title = "LED MEXICO - Gestión de Accesos Cloud"
     page.window.width = 950 
     page.window.height = 1000
     page.theme_mode = ft.ThemeMode.DARK
@@ -485,7 +485,7 @@ def main(page: ft.Page):
     pantalla_principal = ft.Column([
         ft.Row([
             ft.Image(src="/logo.png", width=120, height=60, fit=ft.ImageFit.CONTAIN), 
-            ft.Text("LED MÉXICO - Sistemas de interconexión", size=26, weight="bold", color="orange")
+            ft.Text("LED MEXICO - Sistemas de interconexión", size=26, weight="bold", color="orange")
         ], alignment=ft.MainAxisAlignment.CENTER, spacing=20),
         contenedor_ocr, 
         ft.Text("1. Seleccionar Tarifa CFE Manualmente (Opcional)", weight="bold"),
