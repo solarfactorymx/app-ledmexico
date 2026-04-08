@@ -27,14 +27,14 @@ except ImportError:
 
 def main(page: ft.Page):
     page.title = "LED MÉXICO - Gestión de Accesos Cloud"
-    page.window.width = 900 
-    page.window.height = 950
+    page.window.width = 950 
+    page.window.height = 1000
     page.theme_mode = ft.ThemeMode.DARK
     page.scroll = "adaptive"
     page.padding = 20
 
     # ⚠️ 1. REEMPLAZA CON TU ENLACE DE RENDER (EL DEL MOTOR, SIN / AL FINAL)
-    URL_SERVIDOR = "https://motor-led-mexico.onrender.com" 
+    URL_SERVIDOR = "https://TU-ENLACE-DEL-MOTOR-AQUI.onrender.com" 
     ARCHIVO_CREDENCIALES_GOOGLE = "credenciales.json" 
     
     ID_HOJA = "1B-q98Dl3TNxRX1yNXU9piCyTS4x2NvWDeY9EK3LvDzc"
@@ -75,11 +75,9 @@ def main(page: ft.Page):
         except Exception as ex: return False, f"Error de conexión: {ex}"
 
     txt_error_login = ft.Text("", color="red", weight="bold", text_align="center")
-    in_usuario = ft.TextField(label="Usuario LED México", width=300, text_align="center")
-    in_password = ft.TextField(label="Contraseña", password=True, can_reveal_password=True, width=300, text_align="center")
     prg_login = ft.ProgressBar(width=300, visible=False)
 
-    def intentar_entrar(e):
+    def intentar_entrar(e=None):
         usr = in_usuario.value.strip()
         pwd = in_password.value.strip()
         if not usr or not pwd:
@@ -93,14 +91,18 @@ def main(page: ft.Page):
         else: txt_error_login.value = mensaje; txt_error_login.color = "red"; prg_login.visible = False; btn_login.disabled = False
         page.update()
 
+    # Agregamos "on_submit=intentar_entrar" para que la tecla Enter funcione
+    in_usuario = ft.TextField(label="Usuario LED México", width=300, text_align="center", on_submit=intentar_entrar)
+    in_password = ft.TextField(label="Contraseña", password=True, can_reveal_password=True, width=300, text_align="center", on_submit=intentar_entrar)
     btn_login = ft.ElevatedButton("AUTENTICAR ACCESO", on_click=intentar_entrar, width=300, height=50, bgcolor="orange", color="white")
+    
     pantalla_login = ft.Container(
         content=ft.Column([
-            ft.Icon(name="cloud_sync", size=80, color="orange"), 
+            ft.Image(src="/logo.png", width=250, height=120, fit=ft.ImageFit.CONTAIN), # <--- LOGO AQUI
             ft.Text("SISTEMA DE SEGURIDAD CLOUD", size=22, weight="bold", color="white"), 
             ft.Container(height=10), in_usuario, in_password, prg_login, btn_login, txt_error_login
         ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-        alignment=ft.alignment.center, expand=True, margin=ft.margin.only(top=150)
+        alignment=ft.alignment.center, expand=True, margin=ft.margin.only(top=100)
     )
 
     # ==========================================
@@ -167,6 +169,11 @@ def main(page: ft.Page):
     in_potencia = ft.TextField(label="Watts del Panel", value="600", keyboard_type="number", width=160, height=45)
     entradas_historial = [ft.TextField(label=f"Bimestre {i+1}", value="0", height=45, text_size=13, visible=(i < 6)) for i in range(12)]
     
+    # Controles para mostrar las gráficas en la web
+    img_g1 = ft.Image(src="", width=420, height=250, fit=ft.ImageFit.CONTAIN, visible=False)
+    img_g2 = ft.Image(src="", width=420, height=250, fit=ft.ImageFit.CONTAIN, visible=False)
+    fila_graficas_web = ft.Row([img_g1, img_g2], alignment=ft.MainAxisAlignment.CENTER, scroll="auto")
+
     def alternar_periodos(e=None):
         es_mensual = switch_mensual.value
         for i, campo in enumerate(entradas_historial):
@@ -206,21 +213,21 @@ def main(page: ft.Page):
         elif t == "GDMTH": columna_costos.controls.extend(campos_costos["GDMTH"]); switch_mensual.value = True
         columna_costos.controls.append(campos_costos["SUB"]); alternar_periodos()
         
-        # Ocultamos botones al cambiar tarifa
+        # Ocultamos botones y gráficas al cambiar de tarifa
         btn_pdf.visible = False; btn_abrir_pdf.visible = False
+        img_g1.visible = False; img_g2.visible = False
         page.update()
 
     def btn_t(txt): return ft.ElevatedButton(txt, on_click=lambda _: actualizar_interfaz(txt), bgcolor="#2874A6", color="white")
     grid_tarifas = ft.Column([ft.Row([btn_t("01"), btn_t("1A"), btn_t("1B"), btn_t("1C"), btn_t("1D")], scroll="auto"), ft.Row([btn_t("1E"), btn_t("1F"), btn_t("DAC"), btn_t("PDBT"), btn_t("GDMTO"), btn_t("GDMTH")], scroll="auto")])
     res_final = ft.Container(content=ft.Text("Ingresa datos", color="white"), padding=15, bgcolor="#1B2631", border_radius=10)
 
-    def num_seguro(valor):
-        try: return float(str(valor).replace("$", "").replace(",", "").strip())
-        except: return 0.0
-
     def calcular_propuesta(e=None):
         res_final.content.value = "Calculando inteligencia financiera..."
-        btn_pdf.visible = False; btn_abrir_pdf.visible = False; page.update()
+        btn_pdf.visible = False; btn_abrir_pdf.visible = False
+        img_g1.visible = False; img_g2.visible = False
+        page.update()
+        
         try:
             consumos_visibles = [x for x in entradas_historial if x.visible]
             consumos = [num_seguro(x.value) for x in consumos_visibles if num_seguro(x.value) > 0]
@@ -274,6 +281,42 @@ def main(page: ft.Page):
                     "c_list": c_list, "p_list": p_list, "a_list": a_list, "np_list": np_list, "b_list": b_list
                 })
                 
+                # --- AQUÍ GENERAMOS LAS GRÁFICAS PARA LA PÁGINA WEB ---
+                try:
+                    import matplotlib.pyplot as plt
+                    import numpy as np
+                    n_periodos = len(consumos)
+                    x = np.arange(n_periodos)
+                    etiquetas = [f"P{i+1}" for i in range(n_periodos)]
+
+                    # Gráfica 1
+                    fig1, ax1 = plt.subplots(figsize=(6, 3.5))
+                    ax1.bar(x - 0.175, consumos, 0.35, label='Consumo', color='#E74C3C')
+                    ax1.bar(x + 0.175, [gen_kwh]*n_periodos, 0.35, label='Generación', color='#2ECC71')
+                    ax1.set_title('Historial de Energía (kWh)', fontsize=12, fontweight='bold')
+                    ax1.set_xticks(x); ax1.set_xticklabels(etiquetas)
+                    ax1.legend(); fig1.tight_layout()
+                    ruta_g1 = os.path.join(CARPETA_ASSETS, "g1.png"); fig1.savefig(ruta_g1); plt.close(fig1)
+
+                    # Gráfica 2
+                    fig2, ax2 = plt.subplots(figsize=(6, 3.5))
+                    ax2.bar(x - 0.25, p_list, 0.25, label='Pago Actual', color='#E74C3C')
+                    ax2.bar(x, a_list, 0.25, label='Ahorro', color='#2ECC71')
+                    ax2.bar(x + 0.25, np_list, 0.25, label='Nuevo Pago', color='#3498DB')
+                    ax2.set_title('Historial Económico ($)', fontsize=12, fontweight='bold')
+                    ax2.set_xticks(x); ax2.set_xticklabels(etiquetas)
+                    ax2.legend(); fig2.tight_layout()
+                    ruta_g2 = os.path.join(CARPETA_ASSETS, "g2.png"); fig2.savefig(ruta_g2); plt.close(fig2)
+
+                    # Actualizamos la pantalla con las gráficas recién hechas (El reloj evita el caché del navegador)
+                    timestamp = int(datetime.now().timestamp())
+                    img_g1.src = f"/g1.png?t={timestamp}"
+                    img_g2.src = f"/g2.png?t={timestamp}"
+                    img_g1.visible = True
+                    img_g2.visible = True
+                except Exception as ex_graf:
+                    print("Advertencia: No se pudieron mostrar las gráficas en pantalla:", ex_graf)
+
                 res_final.content.value = f"✅ INGENIERÍA COMPLETA:\nPaneles: {cant_final} | Potencia: {round(potencia_inst,2)}kWp | Ahorro Anual: ${round(ahorro_anual, 2):,}"
                 res_final.bgcolor = "#145A32"; btn_pdf.visible = True
             else: res_final.content.value = f"Error del Servidor: {d.get('error')}"; res_final.bgcolor = "#7B241C"
@@ -285,11 +328,9 @@ def main(page: ft.Page):
     # ==========================================
     def generar_y_compartir_pdf(e):
         btn_pdf.disabled = True
-        res_final.content.value = "⏳ Construyendo documento..."; page.update()
+        res_final.content.value = "⏳ Construyendo documento PDF..."; page.update()
         
         try: 
-            import matplotlib.pyplot as plt
-            import numpy as np
             from fpdf import FPDF
         except ImportError: 
             res_final.content.value = "⚠️ Instala librerías: pip install fpdf matplotlib numpy"
@@ -303,28 +344,6 @@ def main(page: ft.Page):
             nuevos_pagos = datos_pdf_global.get('np_list', [])
             balances = datos_pdf_global.get('b_list', [])
             n_periodos = len(consumos)
-            
-            x = np.arange(n_periodos)
-            etiquetas = [f"P{i+1}" for i in range(n_periodos)]
-
-            # Gráfica 1 
-            fig, ax = plt.subplots(figsize=(7, 3.5))
-            ax.bar(x - 0.175, consumos, 0.35, label='Consumo', color='#E74C3C')
-            ax.bar(x + 0.175, [gen_kwh]*n_periodos, 0.35, label='Generación', color='#2ECC71')
-            ax.set_title('Historial de Energía (kWh)', fontsize=12, fontweight='bold')
-            ax.set_xticks(x); ax.set_xticklabels(etiquetas)
-            ax.legend(); fig.tight_layout()
-            ruta_g1 = os.path.join(CARPETA_ASSETS, "g1.png"); fig.savefig(ruta_g1); plt.close(fig)
-
-            # Gráfica 2
-            fig, ax = plt.subplots(figsize=(7, 3.5))
-            ax.bar(x - 0.25, pagos, 0.25, label='Pago Actual', color='#E74C3C')
-            ax.bar(x, ahorros, 0.25, label='Ahorro', color='#2ECC71')
-            ax.bar(x + 0.25, nuevos_pagos, 0.25, label='Nuevo Pago', color='#3498DB')
-            ax.set_title('Historial Económico ($)', fontsize=12, fontweight='bold')
-            ax.set_xticks(x); ax.set_xticklabels(etiquetas)
-            ax.legend(); fig.tight_layout()
-            ruta_g2 = os.path.join(CARPETA_ASSETS, "g2.png"); fig.savefig(ruta_g2); plt.close(fig)
 
             # --- CONSTRUCCIÓN DEL PDF ---
             pdf = FPDF()
@@ -397,33 +416,35 @@ def main(page: ft.Page):
             texto_p = (f"Considerando su consumo y para cubrir los gastos reflejados en el recibo de CFE, se determina la necesidad de instalar {datos_pdf_global.get('paneles', '')} paneles solares de {datos_pdf_global.get('watts', '')} Watts de potencia. Este sistema solar fotovoltaico tendra la capacidad de generar aproximadamente {datos_pdf_global.get('gen_kwh',0):,.0f} kWh por periodo. En consecuencia, se propone la instalacion de un inversor con una capacidad de al menos {datos_pdf_global.get('inversor_sug',0):.2f} kW para gestionar eficientemente la energia producida.\n\nEl precio de los costos es aproximado y puede diferir del recibo.")
             pdf.multi_cell(0, 5, texto_p)
 
+            # Insertamos las gráficas que se generaron en el paso anterior
             pdf.add_page()
             pdf.set_font("Arial", 'B', 14)
             pdf.cell(0, 10, "Analisis Grafico", ln=True, align="C")
             pdf.ln(5)
-            pdf.image(ruta_g1, x=25, y=None, w=160)
+            
+            ruta_g1 = os.path.join(CARPETA_ASSETS, "g1.png")
+            ruta_g2 = os.path.join(CARPETA_ASSETS, "g2.png")
+            if os.path.exists(ruta_g1): pdf.image(ruta_g1, x=25, y=None, w=160)
             pdf.ln(10)
-            pdf.image(ruta_g2, x=25, y=None, w=160)
+            if os.path.exists(ruta_g2): pdf.image(ruta_g2, x=25, y=None, w=160)
 
             # ==========================================
-            # LA SOLUCIÓN DEFINITIVA (Pestaña Nueva y Segura)
+            # DESCARGA DEL PDF (PESTAÑA NUEVA)
             # ==========================================
             timestamp = int(datetime.now().timestamp())
             nombre_archivo = f"Propuesta_LED_MEXICO_{timestamp}.pdf"
-            
-            # 1. Guardamos el archivo en la carpeta especial (assets)
             ruta_pdf = os.path.join(CARPETA_ASSETS, nombre_archivo)
+            
+            # Guardamos el archivo físicamente
             pdf.output(ruta_pdf)
             
-            # 2. Ocultamos el botón que genera, para no estorbar
+            # Mostramos el botón directo de descarga
             btn_pdf.visible = False
-            
-            # 3. Configuramos el botón verde para que funcione como un Link Seguro
             btn_abrir_pdf.url = f"/{nombre_archivo}"
-            btn_abrir_pdf.url_target = "_blank"  # <--- ESTO EVITA QUE SE RECARGUE EL LOGIN
+            btn_abrir_pdf.url_target = "_blank"  # Evita que se recargue el login
             btn_abrir_pdf.visible = True
             
-            res_final.content.value = "✅ ¡PDF Generado! Haz clic en el botón verde de abajo para abrirlo en otra pestaña."
+            res_final.content.value = "✅ ¡PDF Generado! Haz clic en el botón verde de abajo para abrirlo."
             res_final.bgcolor = "#145A32"
         except Exception as ex: 
             res_final.content.value = f"⚠️ Error PDF: {ex}"
@@ -438,11 +459,16 @@ def main(page: ft.Page):
     btn_abrir_pdf = ft.ElevatedButton("✅ ABRIR / DESCARGAR PDF", bgcolor="#2ECC71", color="white", width=350, height=60, visible=False)
 
     pantalla_principal = ft.Column([
-        ft.Text("LED MÉXICO - Dashboard Financiero + OCR", size=26, weight="bold", color="orange"),
+        ft.Row([
+            ft.Image(src="/logo.png", width=120, height=60, fit=ft.ImageFit.CONTAIN), # <--- LOGO AQUI
+            ft.Text("LED MÉXICO - Dashboard Financiero + OCR", size=26, weight="bold", color="orange")
+        ], alignment=ft.MainAxisAlignment.CENTER),
         contenedor_ocr, 
         ft.Text("1. Seleccionar Tarifa CFE Manualmente (Opcional)", weight="bold"),
         grid_tarifas, ft.Row([ft.Text("Tarifa Activa:"), tarifa_activa]), ft.Divider(),
-        ft.Row([in_potencia, switch_mensual]), fila_tablas, 
+        ft.Row([in_potencia, switch_mensual]), 
+        fila_tablas, 
+        fila_graficas_web, # <--- LAS GRÁFICAS AHORA APARECEN AQUÍ
         ft.Column([btn_calcular, btn_pdf, btn_abrir_pdf], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER),
         res_final
     ], visible=False)
@@ -453,5 +479,5 @@ def main(page: ft.Page):
 os.environ["FLET_SECRET_KEY"] = "LED_MEXICO_SEGURIDAD_123"
 puerto = int(os.environ.get("PORT", 8080))
 
-# Ahora usamos la ruta absoluta para que Flet reconozca los archivos
+# Ejecución final
 ft.app(target=main, view=ft.AppView.WEB_BROWSER, upload_dir=CARPETA_UPLOADS, assets_dir=CARPETA_ASSETS, host="0.0.0.0", port=puerto)
