@@ -26,7 +26,7 @@ def main(page: ft.Page):
     page.padding = 20
 
     # ⚠️ 1. REEMPLAZA CON TU ENLACE DE RENDER
-    URL_SERVIDOR = "https://dashboard-ledmexico.onrender.com" 
+    URL_SERVIDOR = "https://motor-led-mexico-1.onrender.com" 
     
     # ⚠️ 2. REEMPLAZA CON EL NOMBRE EXACTO DE TU ARCHIVO JSON DE GOOGLE
     ARCHIVO_CREDENCIALES_GOOGLE = "credenciales.json" 
