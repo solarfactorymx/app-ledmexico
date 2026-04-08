@@ -101,7 +101,7 @@ def main(page: ft.Page):
     pantalla_login = ft.Container(
         content=ft.Column([
             ft.Image(src="/logo.png", width=250, height=120, fit=ft.ImageFit.CONTAIN), 
-            ft.Text("SISTEMA DE SEGURIDAD CLOUD", size=22, weight="bold", color="white"), 
+            ft.Text("SISTEMA DE INICIO DE SESION PARA SISTEMAS FOTOVOLTAAICOS LED MEXICO", size=22, weight="bold", color="white"), 
             ft.Container(height=10), in_usuario, in_password, prg_login, btn_login, txt_error_login
         ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
         alignment=ft.alignment.center, expand=True, margin=ft.margin.only(top=100)
@@ -327,7 +327,7 @@ def main(page: ft.Page):
                 except Exception as ex_graf:
                     print("Advertencia: No se pudieron mostrar las gráficas en pantalla:", ex_graf)
 
-                res_final.content.value = f"✅ INGENIERÍA COMPLETA:\nPaneles: {cant_final} | Potencia: {round(potencia_inst,2)}kWp | Ahorro Anual: ${round(ahorro_anual, 2):,}"
+                res_final.content.value = f"✅ CALCULO COMPLETADO:\nPaneles: {cant_final} | Potencia: {round(potencia_inst,2)}kWp | Ahorro Anual: ${round(ahorro_anual, 2):,}"
                 res_final.bgcolor = "#145A32"; btn_pdf.visible = True
             else: res_final.content.value = f"Error del Servidor: {d.get('error')}"; res_final.bgcolor = "#7B241C"
         except Exception as ex: res_final.content.value = f"Error de cálculo: {ex}"; res_final.bgcolor = "#7B241C"
@@ -485,7 +485,7 @@ def main(page: ft.Page):
     pantalla_principal = ft.Column([
         ft.Row([
             ft.Image(src="/logo.png", width=120, height=60, fit=ft.ImageFit.CONTAIN), 
-            ft.Text("LED MÉXICO - Dashboard Financiero + OCR", size=26, weight="bold", color="orange")
+            ft.Text("LED MÉXICO - Sistemas de interconexión", size=26, weight="bold", color="orange")
         ], alignment=ft.MainAxisAlignment.CENTER, spacing=20),
         contenedor_ocr, 
         ft.Text("1. Seleccionar Tarifa CFE Manualmente (Opcional)", weight="bold"),
