@@ -308,7 +308,7 @@ def main(page: ft.Page):
             x = np.arange(n_periodos)
             etiquetas = [f"P{i+1}" for i in range(n_periodos)]
 
-            # Gráfica 1 - AHORA SE GUARDA EN "uploads"
+            # Gráfica 1 
             fig, ax = plt.subplots(figsize=(7, 3.5))
             ax.bar(x - 0.175, consumos, 0.35, label='Consumo', color='#E74C3C')
             ax.bar(x + 0.175, [gen_kwh]*n_periodos, 0.35, label='Generación', color='#2ECC71')
@@ -317,7 +317,7 @@ def main(page: ft.Page):
             ax.legend(); fig.tight_layout()
             ruta_g1 = os.path.join("uploads", "g1.png"); fig.savefig(ruta_g1); plt.close(fig)
 
-            # Gráfica 2 - AHORA SE GUARDA EN "uploads"
+            # Gráfica 2
             fig, ax = plt.subplots(figsize=(7, 3.5))
             ax.bar(x - 0.25, pagos, 0.25, label='Pago Actual', color='#E74C3C')
             ax.bar(x, ahorros, 0.25, label='Ahorro', color='#2ECC71')
@@ -408,18 +408,18 @@ def main(page: ft.Page):
             pdf.image(ruta_g2, x=25, y=None, w=160)
 
             # ==========================================
-            # LA MAGIA PARA QUE ABRA EN EL NAVEGADOR
+            # LA MAGIA PARA QUE ABRA EN EL NAVEGADOR (CORREGIDO)
             # ==========================================
             # 1. Nombre único con la hora para evitar caché
             timestamp = int(datetime.now().timestamp())
             nombre_archivo = f"Propuesta_LED_MEXICO_{timestamp}.pdf"
             
-            # 2. Guardamos en la carpeta de descargas (uploads)
+            # 2. Guardamos físicamente en la carpeta "uploads" (con S)
             ruta_pdf = os.path.join("uploads", nombre_archivo)
             pdf.output(ruta_pdf)
             
-            # 3. Lanzamos el PDF desde esa carpeta
-            page.launch_url(f"/uploads/{nombre_archivo}")
+            # 3. Le decimos a Flet que lance la dirección web "/upload/..." (sin S)
+            page.launch_url(f"/upload/{nombre_archivo}")
             
             res_final.content.value = "✅ ¡PDF Profesional Generado y Abierto!"
             res_final.bgcolor = "#145A32"
