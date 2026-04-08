@@ -2,7 +2,6 @@ import flet as ft
 import requests
 import math
 import os
-import tempfile
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
@@ -35,6 +34,8 @@ def main(page: ft.Page):
     SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
 
     datos_pdf_global = {}
+    
+    # Creamos las carpetas necesarias
     os.makedirs("uploads", exist_ok=True)
     os.makedirs("assets", exist_ok=True)
 
@@ -119,7 +120,6 @@ def main(page: ft.Page):
                 archivos_para_enviar = {'file': (e.file_name, f, tipo_mime)}
                 respuesta = requests.post(f"{URL_SERVIDOR}/api/ocr", files=archivos_para_enviar)
                 
-                # Intentamos leer la respuesta de la nube de forma segura
                 try:
                     datos = respuesta.json()
                 except Exception:
@@ -145,7 +145,6 @@ def main(page: ft.Page):
                             entradas_historial[i].value = str(round(valor)); entradas_historial[i].color = "#2ECC71"
                 page.update(); calcular_propuesta()
             else: 
-                # Si la IA falla, extraemos el error exacto y lo mostramos
                 error_msg = datos.get('detail', datos.get('error', str(datos)))
                 txt_estado_ocr.value = f"❌ Error Real de la Nube: {error_msg}"
                 txt_estado_ocr.color = "red"
@@ -284,6 +283,9 @@ def main(page: ft.Page):
         except Exception as ex: res_final.content.value = f"Error de cálculo: {ex}"; res_final.bgcolor = "#7B241C"
         page.update()
 
+    # ==========================================
+    # CREADOR PROFESIONAL DE PDF
+    # ==========================================
     def generar_y_compartir_pdf(e):
         try: 
             import matplotlib.pyplot as plt
@@ -301,22 +303,21 @@ def main(page: ft.Page):
             ahorros = datos_pdf_global.get('a_list', [])
             nuevos_pagos = datos_pdf_global.get('np_list', [])
             balances = datos_pdf_global.get('b_list', [])
-            es_mensual = datos_pdf_global.get('es_mensual', False)
             n_periodos = len(consumos)
             
             x = np.arange(n_periodos)
             etiquetas = [f"P{i+1}" for i in range(n_periodos)]
 
-            # Gráfica 1
+            # Gráfica 1 - AHORA SE GUARDA EN "uploads"
             fig, ax = plt.subplots(figsize=(7, 3.5))
             ax.bar(x - 0.175, consumos, 0.35, label='Consumo', color='#E74C3C')
             ax.bar(x + 0.175, [gen_kwh]*n_periodos, 0.35, label='Generación', color='#2ECC71')
             ax.set_title('Historial de Energía (kWh)', fontsize=12, fontweight='bold')
             ax.set_xticks(x); ax.set_xticklabels(etiquetas)
             ax.legend(); fig.tight_layout()
-            ruta_g1 = os.path.join("assets", "g1.png"); fig.savefig(ruta_g1); plt.close(fig)
+            ruta_g1 = os.path.join("uploads", "g1.png"); fig.savefig(ruta_g1); plt.close(fig)
 
-            # Gráfica 2
+            # Gráfica 2 - AHORA SE GUARDA EN "uploads"
             fig, ax = plt.subplots(figsize=(7, 3.5))
             ax.bar(x - 0.25, pagos, 0.25, label='Pago Actual', color='#E74C3C')
             ax.bar(x, ahorros, 0.25, label='Ahorro', color='#2ECC71')
@@ -324,9 +325,9 @@ def main(page: ft.Page):
             ax.set_title('Historial Económico ($)', fontsize=12, fontweight='bold')
             ax.set_xticks(x); ax.set_xticklabels(etiquetas)
             ax.legend(); fig.tight_layout()
-            ruta_g2 = os.path.join("assets", "g2.png"); fig.savefig(ruta_g2); plt.close(fig)
+            ruta_g2 = os.path.join("uploads", "g2.png"); fig.savefig(ruta_g2); plt.close(fig)
 
-            # PDF
+            # --- CONSTRUCCIÓN DEL PDF ---
             pdf = FPDF()
             pdf.add_page()
             
@@ -406,12 +407,21 @@ def main(page: ft.Page):
             pdf.ln(10)
             pdf.image(ruta_g2, x=25, y=None, w=160)
 
-            nombre_archivo = "Propuesta_Solar_LED_MEXICO.pdf"
-            ruta_pdf = os.path.join("assets", nombre_archivo)
+            # ==========================================
+            # LA MAGIA PARA QUE ABRA EN EL NAVEGADOR
+            # ==========================================
+            # 1. Nombre único con la hora para evitar caché
+            timestamp = int(datetime.now().timestamp())
+            nombre_archivo = f"Propuesta_LED_MEXICO_{timestamp}.pdf"
+            
+            # 2. Guardamos en la carpeta de descargas (uploads)
+            ruta_pdf = os.path.join("uploads", nombre_archivo)
             pdf.output(ruta_pdf)
             
-            page.launch_url(f"/{nombre_archivo}")
-            res_final.content.value = "✅ ¡PDF Profesional Generado!"
+            # 3. Lanzamos el PDF desde esa carpeta
+            page.launch_url(f"/uploads/{nombre_archivo}")
+            
+            res_final.content.value = "✅ ¡PDF Profesional Generado y Abierto!"
             res_final.bgcolor = "#145A32"
         except Exception as ex: 
             res_final.content.value = f"⚠️ Error PDF: {ex}"
@@ -440,5 +450,5 @@ def main(page: ft.Page):
 os.environ["FLET_SECRET_KEY"] = "LED_MEXICO_SEGURIDAD_123"
 puerto = int(os.environ.get("PORT", 8080))
 
-# Ejecución final preparada para Render
+# Ejecución final configurada para internet
 ft.app(target=main, view=ft.AppView.WEB_BROWSER, upload_dir="uploads", assets_dir="assets", host="0.0.0.0", port=puerto)
